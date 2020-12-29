@@ -1,0 +1,42 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "firstMap.tmx",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "Swamp.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 4
+        },
+        "firstMap.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 784.6666666666665,
+                "y": 79.33333333333337
+            }
+        }
+    },
+    "map.lastUsedExportFilter": "JSON map files (*.json)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 32,
+    "map.tileWidth": 32,
+    "openFiles": [
+        "Swamp.tsx",
+        "firstMap.tmx"
+    ],
+    "project": "platformer.tiled-project",
+    "recentFiles": [
+        "Swamp.tsx",
+        "firstMap.tmx",
+        "test.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 32,
+        "width": 32
+    }
+}
