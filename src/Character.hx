@@ -18,7 +18,7 @@ class Character extends Object {
 	var direction = Direction.Right;
 	var state = State.Walking;
 	
-	
+	/*
 	// All characters have 3 attack animations
 	var attack1 : Array<Tile>;
 	var attack2 : Array<Tile>;
@@ -29,37 +29,38 @@ class Character extends Object {
 	
 	// A death animation
 	var death : Array<Tile>;
+	*/
 	
-	// An idle and a walk animation
-	var idle : Array<Tile>;
-	var walk : Array<Tile>;
+	// An idle and a walk animation IN BOTH DIRECTIONS!
+	var idle_right : Array<Tile>;
+	var idle_left : Array<Tile>;
+	
+	var walk_right : Array<Tile>;
+	var walk_left : Array<Tile>;
+	
 	
 	// 1_heavy, 2_standingLight, 3_walkingLight
 	public function new(name : String, scene : h2d.Scene) {
 		super(scene);
 		var idle_bmp = Res.mainChars._1_Woodcutter.Woodcutter_idle.toTile();
-		idle = idle_bmp.gridFlatten(48);
-		currentAnimation = new Anim(idle, animation_speed, scene);
-		currentAnimation.onAnimEnd = function() {
-			switch state {
-				case State.Idle:
-					// Keep idle
-					currentAnimation.play(idle);
-				case State.Walking:
-					// switch to idle
-					state = State.Idle;
-					currentAnimation.play(idle);
-			}
-		}
+		idle_right = idle_bmp.gridFlatten(48);
+		setPivot(idle_right);
+		currentAnimation = new Anim(idle_right, animation_speed, scene);
 		
-		var attack1_bmp = Res.mainChars._1_Woodcutter.Woodcutter_attack1.toTile();
-		attack1 = attack1_bmp.gridFlatten(48);
+		idle_left = idle_bmp.gridFlatten(48);
+		invert(idle_left);
+		setPivot(idle_left);
+		
+		//var attack1_bmp = Res.mainChars._1_Woodcutter.Woodcutter_attack1.toTile();
+		//attack1 = attack1_bmp.gridFlatten(48);
 		
 		var walk_bmp = Res.mainChars._1_Woodcutter.Woodcutter_walk.toTile();
-		walk = walk_bmp.gridFlatten(48);
+		walk_right = walk_bmp.gridFlatten(48);
+		setPivot(walk_right);
 		
-		// currentAnimation.x = 48;
-		// currentAnimation.y = 48;
+		walk_left = walk_bmp.gridFlatten(48);
+		invert(walk_left);
+		setPivot(walk_left);
 	}
 	
 	public function HandleInput(dt:Float) {
@@ -73,20 +74,41 @@ class Character extends Object {
 			Walk(Direction.Right);
 		}
 		
-	
+		if (Key.isReleased(Key.A) || Key.isReleased(Key.D)) {
+			StopWalking();
+		}
 	}
 	
 	private function Walk(newDirection:Direction) {
+		direction = newDirection;
 		if (state == State.Idle) {
-			currentAnimation.play(walk);
-			state = State.Walking;
+			switch direction {
+				case Direction.Left: currentAnimation.play(walk_left);
+				default: currentAnimation.play(walk_right);
+			}			
 		}
-		if (newDirection != direction) {
-			direction = newDirection;
-			for (frame in currentAnimation.frames) {
-				frame.flipX();
-			}
+		state = State.Walking;
+	}
+	
+	private function StopWalking() {
+		state = State.Idle;
+		switch direction {
+			case Direction.Left: currentAnimation.play(idle_left);
+			default: currentAnimation.play(idle_right);
+		}
+		
+	}
+	
+	private function setPivot(animSet:Array<Tile>, dx=17, dy=24) {
+		for (frame in animSet) {
+			frame.dx = dx;
+			frame.dy = dy;
 		}
 	}
 	
+	private function invert(animSet:Array<Tile>) {
+		for (frame in animSet) {
+			frame.flipX();
+		}
+	}	
 }
