@@ -1,13 +1,18 @@
 package;
+import h2d.Anim;
 import h2d.Bitmap;
 import hxd.Res;
 import hxd.Event;
 import hxd.Window;
 
+import MapImporter;
+
 
 class Main extends hxd.App {
 	
-	var mainCharacter : Character;	
+	var mainCharacter : Character;
+	var mapGroup : Array<Coord>;
+	
 	override function init() {
 		super.init();
 		Res.initEmbed();
@@ -20,17 +25,16 @@ class Main extends hxd.App {
 		var mapImage = hxd.Res.swamp._1_Tiles.Tileset.toTile();
 		
 		// Import the map
-		MapImporter.ImportTiledMap(mapData, mapImage, s2d);
-		
-		mainCharacter = new Character("none", s2d);
-		
+		mapGroup = MapImporter.ImportTiledMap(mapData, mapImage, s2d);
+		mainCharacter = new Character(s2d);	
 		
 	}
 	
 	override function update(dt:Float) {
 		mainCharacter.HandleInput(dt);
-		//s2d.offsetX = mainCharacter.currentAnimation.x;
-		//s2d.offsetY = mainCharacter.currentAnimation.y;
+		mainCharacter.update(dt, mapGroup);
+		s2d.x = -1 * mainCharacter.currentAnimation.x + 48;
+		s2d.y = -1 * mainCharacter.currentAnimation.y + 2* 48;
 		
 	}
 	

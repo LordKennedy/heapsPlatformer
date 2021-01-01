@@ -1,10 +1,13 @@
 package;
 import h2d.Tile;
+import h2d.TileGroup;
 import hxd.res.TiledMap;
 
+typedef Coord = {x:Int, y:Int}
+
 class MapImporter {
-	public static function ImportTiledMap(mapData:TiledMapData, tileImage:Tile, scene:h2d.Scene, tileDimX=32, tileDimY=32) {
-		importTiledMap(mapData, tileImage, scene, tileDimX, tileDimY);
+	public static function ImportTiledMap(mapData:TiledMapData, tileImage:Tile, scene:h2d.Scene, tileDimX=32, tileDimY=32):Array<Coord> {
+		return importTiledMap(mapData, tileImage, scene, tileDimX, tileDimY);
 	}
 	
 	private static function importTiledMap(mapData:TiledMapData, tileImage:Tile, scene:h2d.Scene, tileDimX:Int, tileDimY:Int){		
@@ -12,6 +15,7 @@ class MapImporter {
         // create a TileGroup for fast tile rendering, 
 		// attach to 2d scene
         var group = new h2d.TileGroup(tileImage, scene);
+		var tilesArray = new Array<Coord>();
 		
 		var tileWidth = tileDimX;
         var tileHeight = tileDimY;
@@ -33,11 +37,14 @@ class MapImporter {
                 var tid = layer.data[x + y * mapWidth];
                 if (tid != 0) { // skip transparent tiles
                     // add a tile to the TileGroup
-                    group.add(x * tileWidth, 
-						y * tileHeight, tiles[tid - 1]);
+					var coord:Coord = {x: x * tileWidth, y: y * tileHeight};
+					tilesArray.push(coord);
+                    group.add(coord.x, coord.y, tiles[tid - 1]);
                 }
             }
         }
+		
+		return tilesArray;
 	}
 	
 }
