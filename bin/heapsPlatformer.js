@@ -1201,7 +1201,10 @@ h2d_Object.prototype = {
 	}
 	,__class__: h2d_Object
 };
-var Character = function(name,scene) {
+var Character = function(scene) {
+	this.verticalVelocity = 0;
+	this.gravity = 10;
+	this.touchingGround = false;
 	this.state = State.Walking;
 	this.direction = Direction.Right;
 	this.movementSpeed = 96;
@@ -1224,6 +1227,8 @@ var Character = function(name,scene) {
 	this.walk_left = walk_bmp.gridFlatten(48);
 	this.invert(this.walk_left);
 	this.setPivot(this.walk_left);
+	this.direction = Direction.Right;
+	this.state = State.Idle;
 };
 $hxClasses["Character"] = Character;
 Character.__name__ = "Character";
@@ -1244,7 +1249,14 @@ Character.prototype = $extend(h2d_Object.prototype,{
 			this.Walk(Direction.Right);
 		}
 		if(hxd_Key.isReleased(65) || hxd_Key.isReleased(68)) {
-			this.StopWalking();
+			this.StartIdle();
+		}
+		if(hxd_Key.isPressed(87) && this.touchingGround) {
+			this.verticalVelocity -= 480;
+			this.touchingGround = false;
+			var _g = this.currentAnimation;
+			_g.posChanged = true;
+			_g.y -= 5;
 		}
 	}
 	,Walk: function(newDirection) {
@@ -1258,7 +1270,7 @@ Character.prototype = $extend(h2d_Object.prototype,{
 		}
 		this.state = State.Walking;
 	}
-	,StopWalking: function() {
+	,StartIdle: function() {
 		this.state = State.Idle;
 		if(this.direction._hx_index == 0) {
 			this.currentAnimation.play(this.idle_left);
@@ -1266,9 +1278,33 @@ Character.prototype = $extend(h2d_Object.prototype,{
 			this.currentAnimation.play(this.idle_right);
 		}
 	}
+	,update: function(dt,mapGroup) {
+		var canMove = true;
+		var _g = 0;
+		while(_g < mapGroup.length) {
+			var tile = mapGroup[_g];
+			++_g;
+			if(this.currentAnimation.y <= tile.y + 32 && tile.y <= this.currentAnimation.y && this.currentAnimation.x <= tile.x && tile.x - 32 <= this.currentAnimation.x) {
+				canMove = false;
+				this.verticalVelocity = 0;
+				this.touchingGround = true;
+				var _this = this.currentAnimation;
+				_this.posChanged = true;
+				_this.y = tile.y;
+				break;
+			}
+		}
+		if(canMove) {
+			this.touchingGround = false;
+			var _g = this.currentAnimation;
+			_g.posChanged = true;
+			_g.y += this.verticalVelocity * dt;
+			this.verticalVelocity += this.gravity;
+		}
+	}
 	,setPivot: function(animSet,dx,dy) {
 		if(dy == null) {
-			dy = 24;
+			dy = -48;
 		}
 		if(dx == null) {
 			dx = 17;
@@ -1569,11 +1605,18 @@ Main.prototype = $extend(hxd_App.prototype,{
 		var this1 = hxd_Res.get_loader();
 		var this2 = this1;
 		var mapImage = this2.loadCache("swamp/1 Tiles/Tileset.png",hxd_res_Image).toTile();
-		MapImporter.ImportTiledMap(mapData,mapImage,this.s2d);
-		this.mainCharacter = new Character("none",this.s2d);
+		this.mapGroup = MapImporter.ImportTiledMap(mapData,mapImage,this.s2d);
+		this.mainCharacter = new Character(this.s2d);
 	}
 	,update: function(dt) {
 		this.mainCharacter.HandleInput(dt);
+		this.mainCharacter.update(dt,this.mapGroup);
+		var _this = this.s2d;
+		_this.posChanged = true;
+		_this.x = -1 * this.mainCharacter.currentAnimation.x + 48;
+		var _this = this.s2d;
+		_this.posChanged = true;
+		_this.y = -1 * this.mainCharacter.currentAnimation.y + 96;
 	}
 	,__class__: Main
 });
@@ -1587,10 +1630,11 @@ MapImporter.ImportTiledMap = function(mapData,tileImage,scene,tileDimX,tileDimY)
 	if(tileDimX == null) {
 		tileDimX = 32;
 	}
-	MapImporter.importTiledMap(mapData,tileImage,scene,tileDimX,tileDimY);
+	return MapImporter.importTiledMap(mapData,tileImage,scene,tileDimX,tileDimY);
 };
 MapImporter.importTiledMap = function(mapData,tileImage,scene,tileDimX,tileDimY) {
 	var group = new h2d_TileGroup(tileImage,scene);
+	var tilesArray = [];
 	var tileWidth = tileDimX;
 	var tileHeight = tileDimY;
 	var mapWidth = mapData.width;
@@ -1623,11 +1667,14 @@ MapImporter.importTiledMap = function(mapData,tileImage,scene,tileDimX,tileDimY)
 				var x = _g4++;
 				var tid = layer.data[x + y * mapWidth];
 				if(tid != 0) {
-					group.content.add(x * tileWidth,y * tileHeight,group.curColor.x,group.curColor.y,group.curColor.z,group.curColor.w,tiles[tid - 1]);
+					var coord = { x : x * tileWidth, y : y * tileHeight};
+					tilesArray.push(coord);
+					group.content.add(coord.x,coord.y,group.curColor.x,group.curColor.y,group.curColor.z,group.curColor.w,tiles[tid - 1]);
 				}
 			}
 		}
 	}
+	return tilesArray;
 };
 Math.__name__ = "Math";
 var Reflect = function() { };
@@ -8156,347 +8203,6 @@ h2d_Scene.prototype = $extend(h2d_Layers.prototype,{
 		return new h2d_Bitmap(target);
 	}
 	,__class__: h2d_Scene
-});
-var h2d__$SpriteBatch_ElementsIterator = function(e) {
-	this.e = e;
-};
-$hxClasses["h2d._SpriteBatch.ElementsIterator"] = h2d__$SpriteBatch_ElementsIterator;
-h2d__$SpriteBatch_ElementsIterator.__name__ = "h2d._SpriteBatch.ElementsIterator";
-h2d__$SpriteBatch_ElementsIterator.prototype = {
-	hasNext: function() {
-		return this.e != null;
-	}
-	,next: function() {
-		var n = this.e;
-		this.e = this.e.next;
-		return n;
-	}
-	,__class__: h2d__$SpriteBatch_ElementsIterator
-};
-var h2d_BatchElement = function(t) {
-	this.x = 0;
-	this.y = 0;
-	this.r = 1;
-	this.g = 1;
-	this.b = 1;
-	this.a = 1;
-	this.rotation = 0;
-	this.scaleX = this.scaleY = 1;
-	this.visible = true;
-	this.t = t;
-};
-$hxClasses["h2d.BatchElement"] = h2d_BatchElement;
-h2d_BatchElement.__name__ = "h2d.BatchElement";
-h2d_BatchElement.prototype = {
-	set_scale: function(v) {
-		return this.scaleX = this.scaleY = v;
-	}
-	,get_alpha: function() {
-		return this.a;
-	}
-	,set_alpha: function(v) {
-		return this.a = v;
-	}
-	,update: function(et) {
-		return true;
-	}
-	,remove: function() {
-		if(this.batch != null) {
-			this.batch.delete(this);
-		}
-	}
-	,__class__: h2d_BatchElement
-};
-var h2d_BasicElement = function(t) {
-	this.gravity = 0.;
-	this.friction = 1.;
-	this.vy = 0.;
-	this.vx = 0.;
-	h2d_BatchElement.call(this,t);
-};
-$hxClasses["h2d.BasicElement"] = h2d_BasicElement;
-h2d_BasicElement.__name__ = "h2d.BasicElement";
-h2d_BasicElement.__super__ = h2d_BatchElement;
-h2d_BasicElement.prototype = $extend(h2d_BatchElement.prototype,{
-	update: function(dt) {
-		this.vy += this.gravity * dt;
-		this.x += this.vx * dt;
-		this.y += this.vy * dt;
-		if(this.friction != 1) {
-			var p = Math.pow(this.friction,dt * 60);
-			this.vx *= p;
-			this.vy *= p;
-		}
-		return true;
-	}
-	,__class__: h2d_BasicElement
-});
-var h2d_SpriteBatch = function(t,parent) {
-	h2d_Drawable.call(this,parent);
-	this.tile = t;
-};
-$hxClasses["h2d.SpriteBatch"] = h2d_SpriteBatch;
-h2d_SpriteBatch.__name__ = "h2d.SpriteBatch";
-h2d_SpriteBatch.__super__ = h2d_Drawable;
-h2d_SpriteBatch.prototype = $extend(h2d_Drawable.prototype,{
-	add: function(e,before) {
-		if(before == null) {
-			before = false;
-		}
-		e.batch = this;
-		if(this.first == null) {
-			this.first = this.last = e;
-			e.prev = e.next = null;
-		} else if(before) {
-			e.prev = null;
-			e.next = this.first;
-			this.first.prev = e;
-			this.first = e;
-		} else {
-			this.last.next = e;
-			e.prev = this.last;
-			e.next = null;
-			this.last = e;
-		}
-		return e;
-	}
-	,clear: function() {
-		this.first = this.last = null;
-		this.flush();
-	}
-	,alloc: function(t) {
-		return this.add(new h2d_BatchElement(t));
-	}
-	,'delete': function(e) {
-		if(e.prev == null) {
-			if(this.first == e) {
-				this.first = e.next;
-			}
-		} else {
-			e.prev.next = e.next;
-		}
-		if(e.next == null) {
-			if(this.last == e) {
-				this.last = e.prev;
-			}
-		} else {
-			e.next.prev = e.prev;
-		}
-		e.batch = null;
-	}
-	,sync: function(ctx) {
-		h2d_Drawable.prototype.sync.call(this,ctx);
-		if(this.hasUpdate) {
-			var e = this.first;
-			while(e != null) {
-				if(!e.update(ctx.elapsedTime)) {
-					e.remove();
-				}
-				e = e.next;
-			}
-		}
-		this.flush();
-	}
-	,getBoundsRec: function(relativeTo,out,forSize) {
-		h2d_Drawable.prototype.getBoundsRec.call(this,relativeTo,out,forSize);
-		var e = this.first;
-		while(e != null) {
-			var t = e.t;
-			if(this.hasRotationScale) {
-				var ca = Math.cos(e.rotation);
-				var sa = Math.sin(e.rotation);
-				var hx = t.width;
-				var hy = t.height;
-				var px = t.dx * e.scaleX;
-				var py = t.dy * e.scaleY;
-				var x = px * ca - py * sa + e.x;
-				var y = py * ca + px * sa + e.y;
-				this.addBounds(relativeTo,out,x,y,1e-10,1e-10);
-				var px1 = (t.dx + hx) * e.scaleX;
-				var py1 = t.dy * e.scaleY;
-				x = px1 * ca - py1 * sa + e.x;
-				y = py1 * ca + px1 * sa + e.y;
-				this.addBounds(relativeTo,out,x,y,1e-10,1e-10);
-				var px2 = t.dx * e.scaleX;
-				var py2 = (t.dy + hy) * e.scaleY;
-				x = px2 * ca - py2 * sa + e.x;
-				y = py2 * ca + px2 * sa + e.y;
-				this.addBounds(relativeTo,out,x,y,1e-10,1e-10);
-				var px3 = (t.dx + hx) * e.scaleX;
-				var py3 = (t.dy + hy) * e.scaleY;
-				x = px3 * ca - py3 * sa + e.x;
-				y = py3 * ca + px3 * sa + e.y;
-				this.addBounds(relativeTo,out,x,y,1e-10,1e-10);
-			} else {
-				this.addBounds(relativeTo,out,e.x + t.dx,e.y + t.dy,t.width,t.height);
-			}
-			e = e.next;
-		}
-	}
-	,flush: function() {
-		if(this.first == null) {
-			this.bufferVertices = 0;
-			return;
-		}
-		if(this.tmpBuf == null) {
-			var this1 = hxd__$FloatBuffer_Float32Expand._new(0);
-			this.tmpBuf = this1;
-		}
-		var pos = 0;
-		var e = this.first;
-		var tmp = this.tmpBuf;
-		while(e != null) {
-			if(!e.visible) {
-				e = e.next;
-				continue;
-			}
-			var t = e.t;
-			var _g = tmp.pos;
-			var _g1 = pos + 32;
-			while(_g < _g1) {
-				var i = _g++;
-				if(tmp.pos == tmp.array.length) {
-					var newSize = tmp.array.length << 1;
-					if(newSize < 128) {
-						newSize = 128;
-					}
-					var newArray = new Float32Array(newSize);
-					newArray.set(tmp.array);
-					tmp.array = newArray;
-				}
-				tmp.array[tmp.pos++] = 0.;
-			}
-			if(this.hasRotationScale) {
-				var ca = Math.cos(e.rotation);
-				var sa = Math.sin(e.rotation);
-				var hx = t.width;
-				var hy = t.height;
-				var px = t.dx * e.scaleX;
-				var py = t.dy * e.scaleY;
-				tmp.array[pos++] = px * ca - py * sa + e.x;
-				tmp.array[pos++] = py * ca + px * sa + e.y;
-				tmp.array[pos++] = t.u;
-				tmp.array[pos++] = t.v;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				var px1 = (t.dx + hx) * e.scaleX;
-				var py1 = t.dy * e.scaleY;
-				tmp.array[pos++] = px1 * ca - py1 * sa + e.x;
-				tmp.array[pos++] = py1 * ca + px1 * sa + e.y;
-				tmp.array[pos++] = t.u2;
-				tmp.array[pos++] = t.v;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				var px2 = t.dx * e.scaleX;
-				var py2 = (t.dy + hy) * e.scaleY;
-				tmp.array[pos++] = px2 * ca - py2 * sa + e.x;
-				tmp.array[pos++] = py2 * ca + px2 * sa + e.y;
-				tmp.array[pos++] = t.u;
-				tmp.array[pos++] = t.v2;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				var px3 = (t.dx + hx) * e.scaleX;
-				var py3 = (t.dy + hy) * e.scaleY;
-				tmp.array[pos++] = px3 * ca - py3 * sa + e.x;
-				tmp.array[pos++] = py3 * ca + px3 * sa + e.y;
-				tmp.array[pos++] = t.u2;
-				tmp.array[pos++] = t.v2;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-			} else {
-				var sx = e.x + t.dx;
-				var sy = e.y + t.dy;
-				tmp.array[pos++] = sx;
-				tmp.array[pos++] = sy;
-				tmp.array[pos++] = t.u;
-				tmp.array[pos++] = t.v;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				tmp.array[pos++] = sx + t.width + 0.1;
-				tmp.array[pos++] = sy;
-				tmp.array[pos++] = t.u2;
-				tmp.array[pos++] = t.v;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				tmp.array[pos++] = sx;
-				tmp.array[pos++] = sy + t.height + 0.1;
-				tmp.array[pos++] = t.u;
-				tmp.array[pos++] = t.v2;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-				tmp.array[pos++] = sx + t.width + 0.1;
-				tmp.array[pos++] = sy + t.height + 0.1;
-				tmp.array[pos++] = t.u2;
-				tmp.array[pos++] = t.v2;
-				tmp.array[pos++] = e.r;
-				tmp.array[pos++] = e.g;
-				tmp.array[pos++] = e.b;
-				tmp.array[pos++] = e.a;
-			}
-			e = e.next;
-		}
-		this.bufferVertices = pos >> 3;
-		if(this.buffer != null && !this.buffer.isDisposed()) {
-			if(this.buffer.vertices >= this.bufferVertices) {
-				this.buffer.uploadVector(this.tmpBuf,0,this.bufferVertices);
-				return;
-			}
-			this.buffer.dispose();
-			this.buffer = null;
-		}
-		if(this.bufferVertices > 0) {
-			this.buffer = h3d_Buffer.ofSubFloats(this.tmpBuf,8,this.bufferVertices,[h3d_BufferFlag.Dynamic,h3d_BufferFlag.Quads,h3d_BufferFlag.RawFormat]);
-		}
-	}
-	,draw: function(ctx) {
-		this.drawWith(ctx,this);
-	}
-	,drawWith: function(ctx,obj) {
-		if(this.first == null || this.buffer == null || this.buffer.isDisposed() || this.bufferVertices == 0) {
-			return;
-		}
-		if(!ctx.beginDrawObject(obj,this.tile.innerTex)) {
-			return;
-		}
-		var _this = ctx.engine;
-		var start = 0;
-		var max = this.bufferVertices >> 1;
-		if(max == null) {
-			max = -1;
-		}
-		if(start == null) {
-			start = 0;
-		}
-		_this.renderBuffer(this.buffer,_this.mem.quadIndexes,2,start,max);
-	}
-	,isEmpty: function() {
-		return this.first == null;
-	}
-	,getElements: function() {
-		return new h2d__$SpriteBatch_ElementsIterator(this.first);
-	}
-	,onRemove: function() {
-		h2d_Drawable.prototype.onRemove.call(this);
-		if(this.buffer != null) {
-			this.buffer.dispose();
-			this.buffer = null;
-		}
-	}
-	,__class__: h2d_SpriteBatch
 });
 var h2d_Tile = function(tex,x,y,w,h,dx,dy) {
 	if(dy == null) {
